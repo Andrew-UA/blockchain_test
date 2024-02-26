@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Wallet</title>
+    <script>
+        function reload_amount() {
+            let baseUrl = '/wallet/amount'; // Видалено зайвий знак питання
+            let params = new URLSearchParams({
+                'blockchain_address': document.querySelector('#blockchain_address').value
+            });
+            let urlWithParams = `${baseUrl}?${params.toString()}`;
+
+            fetch(urlWithParams, {
+                method: 'GET',
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(responseJson => {
+                    console.info(responseJson);
+                    if (responseJson.message === "fail") {
+                        alert('Send failed');
+                    } else {
+                        document.querySelector('#wallet_amount').textContent = responseJson.amount;
+                    }
+                })
+                .catch(error => {
+                    console.error(error);
+                    alert('Send failed');
+                });
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            fetch('/wallet', {
+                method: 'POST'
+            })
+                .then(response => response.json()) // перетворення відповіді з сервера у формат JSON
+                .then(response => {
+                    // Встановлення значень отриманих даних у відповідні елементи форми
+                    document.getElementById('public_key').value = response['public_key'];
+                    document.getElementById('private_key').value = response['private_key'];
+                    document.getElementById('blockchain_address').value = response['blockchain_address'];
+                    console.info(response);
+                    reload_amount();
+                })
+                .catch(error => {
+                    console.error(error);
+                });
+            document.querySelector('#send_money_button').addEventListener('click', function () {
+                let confirmText = 'Are you sure to send?';
+                let confirmResult = confirm(confirmText);
+                if (!confirmResult) {
+                    alert('Canceled');
+                    return;
+                }
+
+                let transactionData = {
+                    'sender_private_key': document.querySelector('#private_key').value,
+                    'sender_blockchain_address': document.querySelector('#blockchain_address').value,
+                    'recipient_blockchain_address': document.querySelector('#recipient_blockchain_address').value,
+                    'sender_public_key': document.querySelector('#public_key').value,
+                    'value': document.querySelector('#send_amount').value,
+                };
+
+                fetch('/transaction', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(transactionData),
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(responseJson => {
+                        console.info(responseJson);
+                        if (responseJson.message === "fail") {
+                            alert('Send failed');
+                        } else  {
+                            alert('Send success');
+                        }
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        alert('Send failed');
+                    });
+
+            });
+            //document.querySelector('#reload_wallet').addEventListener('click', reload_amount)
+        });
+        setInterval(reload_amount, 3000)
+    </script>
+</head>
+<body>
+
+    <div>
+        <h1>Wallet</h1>
+        <div id="wallet_amount">0</div>
+        <!--<button id="reload_wallet">Reload Wallet</button>-->
+
+        <p>Public  Key</p>
+        <textarea id="public_key" rows="2" cols="100"></textarea>
+
+        <p>Private  Key</p>
+        <textarea id="private_key" rows="1" cols="100"></textarea>
+
+        <p>Blockchain Address</p>
+        <textarea id="blockchain_address" rows="1" cols="100"></textarea>
+
+    </div>
+
+    <div>
+        <h1>Send Money</h1>
+        <div>
+            Address: <input id="recipient_blockchain_address" size="100" type="text">
+            <br>
+            Amount: <input id="send_amount" type="text">
+            <br>
+            <button id="send_money_button">Send</button>
+        </div>
+    </div>
+
+</body>
+</html>
